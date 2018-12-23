@@ -109,6 +109,7 @@ static int usbtv_select_input(struct usbtv *usbtv, int input)
 		ret = usbtv_set_regs(usbtv, composite, ARRAY_SIZE(composite));
 		break;
 	case USBTV_SVIDEO_INPUT:
+	case USBTV_SVIDEO_RETRO_INPUT:
 		ret = usbtv_set_regs(usbtv, svideo, ARRAY_SIZE(svideo));
 		break;
 	default:
@@ -425,13 +426,19 @@ static void usbtv_image_chunk(struct usbtv *usbtv, __be32 *chunk)
 	frame = vb2_plane_vaddr(&buf->vb.vb2_buf, 0);
 
 	/* Copy the chunk data. */
-	usbtv_chunk_to_vbuf(frame, &chunk[1], chunk_no, odd);
+	if (usbtv->input == USBTV_SVIDEO_RETRO_INPUT) {
+		usbtv_chunk_to_vbuf(frame, &chunk[1], chunk_no, 0);
+		usbtv_chunk_to_vbuf(frame, &chunk[1], chunk_no, 1);
+	} else {
+		usbtv_chunk_to_vbuf(frame, &chunk[1], chunk_no, odd);
+	}
+
 	usbtv->chunks_done++;
 
 	/* Last chunk in a field */
 	if (chunk_no == usbtv->n_chunks-1) {
 		/* Last chunk in a frame, signalling an end */
-		if (odd && !usbtv->last_odd) {
+		if ((odd && !usbtv->last_odd) || usbtv->input == USBTV_SVIDEO_RETRO_INPUT) {
 			int size = vb2_plane_size(&buf->vb.vb2_buf, 0);
 			enum vb2_buffer_state state = usbtv->chunks_done ==
 				usbtv->n_chunks ?
@@ -620,6 +627,9 @@ static int usbtv_enum_input(struct file *file, void *priv,
 		break;
 	case USBTV_SVIDEO_INPUT:
 		strscpy(i->name, "S-Video", sizeof(i->name));
+		break;
+	case USBTV_SVIDEO_RETRO_INPUT:
+		strscpy(i->name, "S-Video Retro", sizeof(i->name));
 		break;
 	default:
 		return -EINVAL;

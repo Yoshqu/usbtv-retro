@@ -107,6 +107,7 @@ struct usbtv {
 	enum {
 		USBTV_COMPOSITE_INPUT,
 		USBTV_SVIDEO_INPUT,
+		USBTV_SVIDEO_RETRO_INPUT,
 	} input;
 	v4l2_std_id norm;
 	int width, height;
